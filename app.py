@@ -16,6 +16,20 @@ time_step = st.sidebar.slider("Simulation Time (Minutes)", 0, 60, 0)
 wind_speed = st.sidebar.metric(label="Live Wind Speed", value="45 mph")
 wind_dir = st.sidebar.metric(label="Wind Direction", value="North-East")
 
+# Map Style Selection
+map_style_options = {
+    "Satellite Streets": "mapbox://styles/mapbox/satellite-streets-v11",
+    "Satellite": "mapbox://styles/mapbox/satellite-v9",
+    "Dark": "mapbox://styles/mapbox/dark-v10",
+    "Simple (No Token)": "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+    "OpenStreetMap (Standard)": "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
+}
+selected_style_name = st.sidebar.selectbox("Map Style", list(map_style_options.keys()), index=0)
+selected_map_style = map_style_options[selected_style_name]
+
+# Mapbox Token (Required for Satellite styles if default Streamlit token fails)
+mapbox_api_key = st.sidebar.text_input("Mapbox Access Token (Optional)", type="password", help="Required for Satellite views if they aren't loading.")
+
 # --- Load Data ---
 # 1. Load Static Infrastructure
 df_infra = get_static_infrastructure()
@@ -51,9 +65,9 @@ layer_fire = pdk.Layer(
 # (In a real app, this would be calculated by Spark)
 # For now, we visualize the concept
 risk_zone_data = [{"path": [
-    [-122.71 + (time_step * 0.001), 38.44 + (time_step * 0.001)], # Fire Center
-    [-122.75 + (time_step * 0.001), 38.40 + (time_step * 0.001)], # Wide point A
-    [-122.65 + (time_step * 0.001), 38.40 + (time_step * 0.001)], # Wide point B
+    [-117.30 + (time_step * 0.001), 33.97 + (time_step * 0.001)], # Fire Center
+    [-117.34 + (time_step * 0.001), 33.93 + (time_step * 0.001)], # Wide point A
+    [-117.26 + (time_step * 0.001), 33.93 + (time_step * 0.001)], # Wide point B
 ]}]
 
 layer_risk = pdk.Layer(
@@ -65,10 +79,10 @@ layer_risk = pdk.Layer(
 )
 
 # --- Render the Map ---
-# Set the initial camera view (Santa Rosa, CA)
+# Set the initial camera view (Riverside, CA)
 view_state = pdk.ViewState(
-    latitude=38.44,
-    longitude=-122.71,
+    latitude=33.98,
+    longitude=-117.37,
     zoom=11,
     pitch=50, # Tilts the map for 3D effect
 )
@@ -77,8 +91,9 @@ view_state = pdk.ViewState(
 r = pdk.Deck(
     layers=[layer_risk, layer_fire, layer_infra],
     initial_view_state=view_state,
-    map_style="mapbox://styles/mapbox/dark-v10", # Dark mode looks "serious"
-    tooltip={"text": "{name}"}
+    map_style=selected_map_style,
+    tooltip={"text": "{name}"},
+    api_keys={"mapbox": mapbox_api_key} if mapbox_api_key else None,
 )
 
 # Display in Streamlit
