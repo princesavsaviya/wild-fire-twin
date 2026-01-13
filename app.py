@@ -18,9 +18,6 @@ wind_dir = st.sidebar.metric(label="Wind Direction", value="North-East")
 
 # Map Style Selection
 map_style_options = {
-    "Satellite Streets": "mapbox://styles/mapbox/satellite-streets-v11",
-    "Satellite": "mapbox://styles/mapbox/satellite-v9",
-    "Dark": "mapbox://styles/mapbox/dark-v10",
     "Simple (No Token)": "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
     "OpenStreetMap (Standard)": "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
 }
