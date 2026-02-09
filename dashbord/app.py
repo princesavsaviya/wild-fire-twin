@@ -1,7 +1,7 @@
 import streamlit as st
 import pydeck as pdk
 import pandas as pd
-from data_generator import get_static_infrastructure, get_fire_polygon
+from producer.data_generator import get_static_infrastructure, get_fire_polygon
 
 # --- Page Config ---
 st.set_page_config(layout="wide", page_title="Wildfire Digital Twin")
