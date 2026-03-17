@@ -18,7 +18,14 @@ Start-Sleep -Seconds 10
 # Helper to launch a new process
 function Launch-Component($title, $command) {
     Write-Host "Starting $title..."
-    Start-Process powershell -ArgumentList "-NoExit -Command `$Host.UI.RawUI.WindowTitle='$title'; .\wildfire\Scripts\activate; $command"
+    # Attempt to find conda if not in path
+    $condaCmd = "conda"
+    if (-not (Get-Command "conda" -ErrorAction SilentlyContinue)) {
+        if (Test-Path "E:\anaconda3\Scripts\conda.exe") {
+            $condaCmd = "E:\anaconda3\Scripts\conda.exe"
+        }
+    }
+    Start-Process powershell -ArgumentList "-NoExit -Command `$Host.UI.RawUI.WindowTitle='$title'; & '$condaCmd' shell.powershell hook | Out-String | Invoke-Expression; conda activate .\wildfire; $command"
 }
 
 # 2. Start Alert Sink Consumer
