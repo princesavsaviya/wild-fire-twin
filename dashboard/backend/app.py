@@ -74,7 +74,7 @@ def trigger_simulation(lat: float, lon: float, temp: float):
 
 # --- Page Config ---
 st.set_page_config(layout="wide", page_title="California Essential Buildings")
-st.title("🗺️ California Essential Infrastructure")
+st.title("California Essential Infrastructure")
 st.caption("State-wide fusion of 11.5M Microsoft structural polygons and 79k OpenStreetMap POIs.")
 
 # --- Data Validation ---
@@ -82,114 +82,39 @@ check_data_exists()
 
 # --- City Coordinate Registry ---
 CITIES = {
-    "🌐 California (Whole State)": (36.7783, -119.4179),
+    "California (Whole State)": (36.7783, -119.4179),
     "Riverside": (33.9533, -117.3961),
     "Los Angeles": (34.0522, -118.2437),
     "San Francisco": (37.7749, -122.4194),
     "San Diego": (32.7157, -117.1611),
     "Sacramento": (38.5816, -121.4944),
-    "Irvine/UCR": (33.9533, -117.3961),
+    "San Jose": (37.3382, -121.8863),
+    "Fresno": (36.7378, -119.7871),
+    "Bakersfield": (35.3733, -119.0187),
+    "Anaheim": (33.8366, -117.9143),
+    "Santa Ana": (33.7455, -117.8677),
 }
 
-# --- Sidebar: Navigation & Live Alerts ---
+# --- Sidebar: Navigation & Settings ---
 with st.sidebar:
     st.header("Navigation")
     
-    # 1. Data Source Filter
-    st.subheader("📡 Data Feed Focus")
-    data_source_display = st.radio(
-        "Isolate Dashboard Data:",
-        options=["All Activity (Live + Sim)", "Live Satellite Only (FIRMS)", "Simulated Tests Only"],
-        label_visibility="collapsed"
-    )
-    
-    # Map selection to internal source string
-    if data_source_display == "Live Satellite Only (FIRMS)":
-        st.session_state.data_source = "live"
-    elif data_source_display == "Simulated Tests Only":
-        st.session_state.data_source = "sim"
-    else:
-        st.session_state.data_source = "all"
-
     selected_city = st.selectbox(
-        "🗺️ Teleport Viewport", list(CITIES.keys()), index=0
+        "Teleport Viewport", list(CITIES.keys()), index=0
     )
 
     st.divider()
-
-    st.header("🎮 Simulation Mode (What-If)")
-    st.caption("1. Click the map below to choose an ignition point.")
+    st.header("Mode Selection")
     
-    # Folium Mini-Map for coordinate selection
-    m = folium.Map(location=[CITIES[selected_city][0], CITIES[selected_city][1]], zoom_start=10)
-    m.add_child(folium.LatLngPopup())
-    map_data = st_folium(m, height=250, use_container_width=True, returned_objects=["last_clicked"])
+    # We'll use Streamlit Tabs in the main view instead of radio buttons for the primary mode
     
-    sim_lat = CITIES[selected_city][0]
-    sim_lon = CITIES[selected_city][1]
-    
-    if map_data and map_data.get("last_clicked"):
-        sim_lat = map_data["last_clicked"]["lat"]
-        sim_lon = map_data["last_clicked"]["lng"]
-
-    with st.form("sim_form"):
-        st.write(f"**Target Coordinates:** `{sim_lat:.5f}`, `{sim_lon:.5f}`")
-        st.caption("2. Set fallback conditions and simulate.")
-        sim_temp = st.slider("Fallback Temp (°F)", min_value=50.0, max_value=120.0, value=85.0)
-        
-        if st.form_submit_button("🔥 Simulate Fire Here"):
-            with st.spinner("Publishing simulation to Kafka..."):
-                trigger_simulation(sim_lat, sim_lon, sim_temp)
-            st.success("Simulation triggered! Wait a few seconds for map update.")
-
-    if st.button("🗑️ Clear Previous Simulations", use_container_width=True):
-        delete_simulations()
-        st.toast("🧹 All simulated data wiped from DuckDB.")
-
-    st.divider()
-
-    # Live Alert Panel — auto-refreshes from DuckDB every 5 seconds
-    @st.fragment(run_every=5)
-    def live_alert_panel():
-        st.header("⚡ Live Risk Alerts")
-
-        # Read source from session state for filtering
-        source = st.session_state.get('data_source', 'all')
-        alerts = load_alerts(limit=100, source=source)
-        alert_count = len(alerts)
-
-        if alerts:
-            st.metric("🔥 Active Alerts", alert_count)
-
-            # Weather context from most recent alert
-            latest = alerts[0]  # Already sorted DESC by event_time
-            st.info(
-                f"**Live Weather Context:**\n"
-                f"🌡️ {latest.get('temperature', '--')}°F\n"
-                f"💧 {latest.get('humidity_percent', '--')}%\n"
-                f"💨 {latest.get('wind_speed_mph', '--')} mph @ "
-                f"{latest.get('wind_direction_deg', '--')}°"
-            )
-
-            # Show the most recent 5 alerts
-            for alert in alerts[:5]:
-                st.warning(
-                    f"**RISK**: {alert.get('building_name', 'Unnamed Facility')}\n"
-                    f"Type: {alert.get('building_type')}"
-                )
-        else:
-            st.info("No active fire threats detected.")
-            st.caption("Alerts auto-refresh every 5 seconds from the live store.")
-
-    live_alert_panel()
-
 # --- Load Buildings (Static) ---
 center_lat, center_lon = CITIES[selected_city]
 
 if "California" in selected_city:
     zoom_level = 6
 else:
-    zoom_level = 13
+    zoom_level = 12
 
 with st.spinner("Processing state-wide assets..."):
     full_gdf = load_and_classify_buildings()
@@ -200,11 +125,13 @@ if "California" in selected_city:
 else:
     base_visible_gdf = filter_to_viewport(full_gdf, center_lat, center_lon)
 
-# --- Auto-Refreshing Map Fragment ---
+# --- Main Content Area: Tabs ---
+tab_live, tab_sim = st.tabs(["Live Stream", "Simulation"])
+
+# Define parameterizable fragment for maps
 @st.fragment(run_every=5)
-def render_live_map():
+def render_map_and_footer(source, map_key):
     # Load fresh alerts
-    source = st.session_state.get('data_source', 'all')
     alerts = load_alerts(limit=500, source=source)
     
     # Copy base GDF so we don't mutate the static cached layer, then highlight
@@ -233,16 +160,10 @@ def render_live_map():
         },
     )
     
-    # Streamlit warning fix: use_container_width is deprecated
-    st.pydeck_chart(deck, height=600)
-
-render_live_map()
-
-# --- Footer Stats Fragment ---
-st.divider()
-
-@st.fragment(run_every=5)
-def render_footer():
+    st.pydeck_chart(deck, height=600, key=map_key)
+    
+    # Render Footer
+    st.divider()
     col1, col2, col3 = st.columns(3)
     with col1:
         st.subheader("Category Distribution")
@@ -250,14 +171,115 @@ def render_footer():
             st.dataframe(base_visible_gdf['category'].value_counts())
     with col2:
         st.subheader("Legend")
-        st.markdown("🔴 **Medical** (Hospitals)")
-        st.markdown("🟡 **Education** (Schools)")
-        st.markdown("🟠 **Emergency** (Fire, Police)")
-        st.markdown("⭐ **ALERT** (Inside Wind Cone)")
+        st.markdown("**Medical** (Hospitals)")
+        st.markdown("**Education** (Schools)")
+        st.markdown("**Emergency** (Fire, Police)")
+        st.markdown("**ALERT** (Inside Wind Cone)")
     with col3:
         st.subheader("System Health")
         st.metric("Total Master Buildings", f"{len(full_gdf):,}")
-        source = st.session_state.get('data_source', 'all')
-        st.metric("Live Active Alerts", load_alert_count(source=source))
+        st.metric(f"Active Alerts ({source.capitalize()})", load_alert_count(source=source))
 
-render_footer()
+with tab_live:
+    st.subheader("Live Satellite & Sensor Data")
+    
+    col_trigger, col_info = st.columns([1, 2])
+    with col_trigger:
+        if st.button("Fetch Live Satellite Data (NASA FIRMS)", use_container_width=True):
+            with st.spinner("Triggering NASA FIRMS Ingest..."):
+                os.system("start /B powershell -Command \".\wildfire\python.exe producer/nasa_firms_ingest.py\"")
+            st.success("FIRMS data ingest triggered!")
+            
+    with col_info:
+        st.info("Showing real-time aggregated alerts from live data feeds.")
+
+    # Live Alert Panel — auto-refreshes from DuckDB every 5 seconds
+    @st.fragment(run_every=5)
+    def live_alert_panel_live_tab():
+        alerts = load_alerts(limit=100, source="live")
+        alert_count = len(alerts)
+
+        if alerts:
+            st.metric("Active Live Alerts", alert_count)
+
+            # Weather context from most recent alert
+            latest = alerts[0]
+            st.info(
+                f"**Live Weather Context:**\n"
+                f"Temp: {latest.get('temperature', '--')}F\n"
+                f"Humidity: {latest.get('humidity_percent', '--')}%\n"
+                f"Wind: {latest.get('wind_speed_mph', '--')} mph @ "
+                f"{latest.get('wind_direction_deg', '--')} degrees"
+            )
+
+            # Show the most recent 5 alerts
+            for alert in alerts[:5]:
+                st.warning(
+                    f"**RISK**: {alert.get('building_name', 'Unnamed Facility')}\n"
+                    f"Type: {alert.get('building_type')}"
+                )
+        else:
+            st.info("No active live fire threats detected.")
+
+    live_alert_panel_live_tab()
+    
+    # Render Live Map
+    render_map_and_footer("live", f"map_live_{selected_city}")
+
+with tab_sim:
+    st.subheader("Simulation Mode (What-If Scenarios)")
+    
+    col_sim_controls, col_sim_alerts = st.columns([1, 1])
+    
+    with col_sim_controls:
+        st.caption("1. Click the map below to choose an ignition point.")
+        
+        # Folium Mini-Map for coordinate selection
+        m = folium.Map(location=[CITIES[selected_city][0], CITIES[selected_city][1]], zoom_start=10)
+        m.add_child(folium.LatLngPopup())
+        map_data = st_folium(m, height=250, use_container_width=True, returned_objects=["last_clicked"])
+        
+        sim_lat = CITIES[selected_city][0]
+        sim_lon = CITIES[selected_city][1]
+        
+        if map_data and map_data.get("last_clicked"):
+            sim_lat = map_data["last_clicked"]["lat"]
+            sim_lon = map_data["last_clicked"]["lng"]
+
+        with st.form("sim_form"):
+            st.write(f"**Target Coordinates:** `{sim_lat:.5f}`, `{sim_lon:.5f}`")
+            st.caption("2. Set fallback conditions and simulate.")
+            sim_temp = st.slider("Fallback Temp (F)", min_value=50.0, max_value=120.0, value=85.0)
+            
+            if st.form_submit_button("Simulate Fire Here"):
+                with st.spinner("Publishing simulation to Kafka..."):
+                    trigger_simulation(sim_lat, sim_lon, sim_temp)
+                st.success("Simulation triggered!")
+
+        if st.button("Clear Previous Simulations", use_container_width=True):
+            delete_simulations()
+            st.toast("All simulated data wiped from metrics.")
+            
+    with col_sim_alerts:
+        @st.fragment(run_every=5)
+        def live_alert_panel_sim_tab():
+            alerts = load_alerts(limit=100, source="sim")
+            alert_count = len(alerts)
+
+            if alerts:
+                st.metric("Active Simulated Alerts", alert_count)
+                for alert in alerts[:5]:
+                    st.warning(
+                        f"**RISK**: {alert.get('building_name', 'Unnamed Facility')}\n"
+                        f"Type: {alert.get('building_type')}"
+                    )
+            else:
+                st.info("No active simulated threats.")
+
+        live_alert_panel_sim_tab()
+        
+    # Render Sim Map
+    render_map_and_footer("sim", f"map_sim_{selected_city}")
+
+
+

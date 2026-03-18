@@ -77,8 +77,8 @@ def load_alert_count(source: str = "all") -> int:
 
 
 def filter_to_viewport(gdf: gpd.GeoDataFrame, center_lat: float, center_lon: float,
-                       margin: float = 0.05) -> gpd.GeoDataFrame:
-    """Filter GeoDataFrame to buildings visible in the current map viewport."""
+                       margin: float = 0.15) -> gpd.GeoDataFrame:
+    """Filter GeoDataFrame to buildings visible in the current map viewport (approx 10-mile radius)."""
     return gdf[
         (gdf.geometry.centroid.y > center_lat - margin) &
         (gdf.geometry.centroid.y < center_lat + margin) &

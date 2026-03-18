@@ -15,8 +15,11 @@ CITIES = {
     "San Francisco": (37.7749, -122.4194),
     "San Diego": (32.7157, -117.1611),
     "Sacramento": (38.5816, -121.4944),
-    "UCR": (33.9737, -117.3281), # Precision UCR for user's specific check
-    "Riverside_School": (33.9825, -117.3569) # Known building exact coordinate
+    "San Jose": (37.3382, -121.8863),
+    "Fresno": (36.7378, -119.7871),
+    "Bakersfield": (35.3733, -119.0187),
+    "Anaheim": (33.8366, -117.9143),
+    "Santa Ana": (33.7455, -117.8677),
 }
 
 def utc_now_iso() -> str:
