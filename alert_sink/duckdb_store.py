@@ -153,7 +153,8 @@ def get_latest_alerts(limit: int = 500, source: str = "all") -> list[dict]:
         results.extend(_fetch_from_db(DB_PATH_LIVE, limit))
         
     if source in ["sim", "all"]:
-        results.extend(_fetch_from_db(DB_PATH_SIM, limit))
+        # Simulation map only shows fires from the last 5 minutes (data stays in DB permanently)
+        results.extend(_fetch_from_db(DB_PATH_SIM, limit, time_window_minutes=5))
         
     if source == "all":
         # Additional fallback to check original DB for backward compatibility during migration
@@ -174,16 +175,24 @@ def get_latest_alerts(limit: int = 500, source: str = "all") -> list[dict]:
         
     return results[:limit]
 
-def _fetch_from_db(db_path: str, limit: int) -> list[dict]:
+def _fetch_from_db(db_path: str, limit: int, time_window_minutes: int = None) -> list[dict]:
     if not os.path.exists(db_path):
         return []
     con = _get_connection(read_only=True, db_path=db_path)
     try:
-        result = con.execute(f"""
-            SELECT * FROM alerts_live
-            ORDER BY event_time DESC
-            LIMIT ?
-        """, [limit]).fetchdf()
+        if time_window_minutes is not None:
+            result = con.execute(f"""
+                SELECT * FROM alerts_live
+                WHERE CAST(event_time AS TIMESTAMP) >= NOW() - INTERVAL {time_window_minutes} MINUTE
+                ORDER BY event_time DESC
+                LIMIT ?
+            """, [limit]).fetchdf()
+        else:
+            result = con.execute(f"""
+                SELECT * FROM alerts_live
+                ORDER BY event_time DESC
+                LIMIT ?
+            """, [limit]).fetchdf()
         con.close()
         return result.to_dict(orient="records")
     except duckdb.CatalogException:
