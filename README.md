@@ -1,227 +1,136 @@
 # Wildfire-Twin (Real-Time Digital Twin)
 
-A real-time “digital twin” prototype for wildfire monitoring.  
-It simulates high-velocity IoT sensor events (fire/temperature points) and streams them through Kafka, with the goal of detecting fire events in real time and (next phase) performing spatial joins against static infrastructure data (e.g., building footprints) to identify structures at risk.
+A real-time "digital twin" prototype for wildfire monitoring and predictive risk analysis.
+It ingests simulated or live high-velocity IoT sensor events (fire/temperature/wind points) through Kafka, processes them in real-time using Apache Spark Structured Streaming with Apache Sedona for spatial joins against static infrastructure data (building footprints), and stores alerts in DuckDB. A Streamlit dashboard provides live visualization of at-risk buildings based on dynamic wind-cone projections.
 
-This project is being implemented by Prince Savsaviya, Viswanadh Rahul Challa, Anish A. Kale and Ali Rezayi Nejad at UC Riverside
+This project is being implemented by Prince Savsaviya, Viswanadh Rahul Challa, Anish A. Kale, and Ali Rezayi Nejad at UC Riverside.
 
 ---
 
-## What’s implemented right now (Phase 0)
+## Current Status (Phases 1-3 Complete)
 
-✅ Dockerized Kafka stack (local dev)  
-✅ Python producer that emits JSON wildfire sensor events to Kafka  
-✅ Dashboard shell (Streamlit) to visualize/inspect the live stream (prototype)
-
-**Next (Phase 1):** Spark Structured Streaming + Apache Sedona spatial join with building footprints.
+✅ **Kafka Data Ingestion**: Robust message brokering via local Docker stack.  
+✅ **Apache Spark & Sedona Spatial Engine**: Real-time evaluation of fire sensor data against a master building dataset. Constructs predictive wind cones using native SQL optimizations.   
+✅ **DuckDB Alert Sink**: High-performance, low-latency persistent storage for active fire threats.  
+✅ **Live Streamlit Dashboard**: PyDeck-accelerated 3D mapping of live alerts, infrastructure distribution, and a "What-If" simulation mode for dropping localized fires.  
+✅ **Latency Optimized**: Sustains < 30s p95 end-to-end latency (tested at 6-18s) using native expressions and optimized micro-batch triggers.
 
 ---
 
 ## Tech Stack
 
 - **Python:** 3.11
-- **Message Broker:** Kafka (Docker)
+- **Message Broker:** Kafka (via Docker Compose)
+- **Stream Processor:** Apache Spark 3.4.1 (PySpark)
+- **Spatial Engine:** Apache Sedona 1.7.0
+- **Storage/Sink:** DuckDB
 - **Dashboard:** Streamlit + PyDeck
-- **(Planned) Stream Processor:** Spark 3.4.1
-- **(Planned) Spatial Engine:** Apache Sedona 1.5.0
-- **(Planned) JVM:** OpenJDK 11 (recommended for Spark 3.4.1 stability)
-
----
-
-## Repo Structure
-
-```
-wild-fire-twin/
-  infra/                 # Docker + scripts to run Kafka locally
-    docker-compose.yml
-    start.sh
-    stop.sh
-    create_topics.sh
-  producer/
-    data_generator.py    # Kafka producer (wildfire sensor simulator)
-  dashboard/
-    backend/
-      app.py             # Streamlit app (logic only; loads frontend styles)
-    frontend/            # Design layer: edit to change look (no backend changes)
-      .streamlit/        #   Theme (config.toml)
-      styles.css         #   Layout, hover, responsive
-    run.ps1, run.sh      #   Run dashboard (use these to start the app)
-  docs/
-    PROJECT_STATE.md     # Project state + schema contract
-  requirements.txt
-  README.md
-```
+- **Java Environment:** OpenJDK 11 (required for Spark)
 
 ---
 
 ## Prerequisites
 
-### Required (Phase 0)
-- Docker + Docker Compose
-- Python 3.11 (recommended via Conda)
-- A working local port `9092` (Kafka)
-
-### Recommended
-- Conda environment (e.g., `pyrotwin`)
+1.  **Docker & Docker Compose**: Required for running the Kafka broker.
+2.  **Python 3.11**: Conda environment highly recommended.
+3.  **Java 11**: `JAVA_HOME` must be set properly for Spark execution.
+4.  **Hadoop/Winutils (Windows Only)**: Required by Spark on Windows. The pipeline attempts to auto-resolve this if `infra/hadoop` exists, but setting `HADOOP_HOME` manually is safest.
 
 ---
 
-## Quickstart (Phase 0)
+## How to Run from Scratch
 
-### 1) Start Kafka (Docker)
-From repo root:
+### 1. Environment Setup
 ```bash
-./infra/start.sh
+# Create and activate a conda environment
+conda create -n wildfire python=3.11 -y
+conda activate wildfire
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-**Health check:** Kafka should be reachable at:
-- `localhost:9092`
-
----
-
-### 2) Create the Kafka topic
+### 2. Start Kafka
 ```bash
+# From the project root
+cd infra
+docker-compose up -d
+cd ..
+
+# Create the required Kafka topics (fire_events, at_risk_assets)
 ./infra/create_topics.sh
 ```
 
-Default topic name (Phase 0):
-- `fire_events`
+### 3. Launch the Unified Pipeline (Recommended)
+On Windows, you can launch all components simultaneously using the provided PowerShell script:
+```powershell
+.\run_all.ps1
+```
+This script sequentially starts Kafka, the Alert Sink Consumer, the Spark Spatial Engine, and the Streamlit Dashboard in separate windows.
 
----
+### Manual Launch (Alternative)
+If you prefer starting services manually, use separate terminal windows (ensure the `wildfire` conda env is active in each):
 
-### 3) Install Python dependencies
+**Terminal 1: Alert Sink Consumer**
 ```bash
-pip install -r requirements.txt
+python alert_sink/consumer.py
 ```
 
-(If using conda)
+**Terminal 2: Spark Spatial Engine**
 ```bash
-conda create -n pyrotwin python=3.11 -y
-conda activate pyrotwin
-pip install -r requirements.txt
+python spark_processor/spatial_engine.py
 ```
 
----
-
-### 4) Run the producer (IoT wildfire event simulator)
+**Terminal 3: Streamlit Dashboard**
 ```bash
-python producer/data_generator.py
+streamlit run dashboard/backend/app.py
 ```
 
-Expected behavior:
-- The producer prints periodic confirmation that messages are being sent
-- Events are published to Kafka topic `fire_events`
+### 4. Triggering Simulations
+The system requires data to visualize. You can trigger data in two ways:
+1.  **Via Dashboard**: Open the Streamlit dashboard (`localhost:8501`), navigate to the "Simulation" tab, select a target city, click on the map, and set the parameters to trigger a localized fire.
+2.  **Via Full-Scale Script**: For load/latency testing across multiple cities, run:
+    ```bash
+    python scripts/populate_for_latency_test.py
+    ```
 
 ---
 
-### 5) Run the dashboard (Streamlit)
-From repo root:
-```bash
-# Windows
-.\dashboard\run.ps1
+## How to Use a Different Dataset
 
-# Mac/Linux
-./dashboard/run.sh
-```
-This uses the frontend theme and styles (centered layout, no sidebar, warm dark theme).
+By default, the project uses a California Essential Buildings dataset located at `data/california_essential_buildings.parquet`. To swap this out for your own spatial dataset:
 
-**Customizing the dashboard (frontend):** Edit these files to change how the dashboard looks; no backend code changes needed.
-- **dashboard/frontend/styles.css** — Layout, spacing, hover effects, responsive breakpoints. The app injects this when it runs. Refresh the dashboard in your browser to see CSS changes.
-- **dashboard/frontend/.streamlit/config.toml** — Theme (colors, fonts, borders). Restart the app to see config/theme changes.
+### Step 1: Prepare Your Data
+Your dataset must be saved as a `.parquet` file and contain, at minimum, a geometry column (WKB format is standard) and identifiers (e.g., `building_type`, `building_name`). 
 
-Expected behavior:
-- Streamlit starts locally
-- UI loads (even if it’s a placeholder in Phase 0)
+### Step 2: Update Data Paths
+You must update the file paths in two core components:
 
----
+1.  **Spark Spatial Engine (`spark_processor/spatial_engine.py`)**:
+    Change the `BUILDING_DATA_PATH` variable (around line 30) to point to your new `.parquet` file.
+    ```python
+    BUILDING_DATA_PATH = os.path.join(os.getcwd(), "data", "your_custom_dataset.parquet")
+    ```
+    *Note: Adjust the Spark SQL query on line 99 if your column names differ from `building_type`, `building_name`, and `geometry`.*
 
-## Event Schema (Contract)
+2.  **Dashboard Data Loader (`dashboard/backend/data_loader.py`)**:
+    Change the `DATA_PATH` variable (around line 19) to match your new file.
+    ```python
+    DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "your_custom_dataset.parquet")
+    ```
 
-Each Kafka message is JSON. Minimum required fields:
-
-- `event_time` (string timestamp, ISO format recommended)
-- `sensor_id` (string or int)
-- `latitude` (float)
-- `longitude` (float)
-- `temperature` (float)
-
-Example:
-```json
-{
-  "event_time": "2026-02-09T12:34:56Z",
-  "sensor_id": "sensor_17",
-  "latitude": 33.9806,
-  "longitude": -117.3755,
-  "temperature": 87.4
-}
-```
+### Step 3: Update Dashboard Styling (Optional)
+If your new dataset uses different values for `building_type`, you may want to update the semantic categorization logic in `dashboard/backend/data_loader.py` `categorize()` function to ensure the PyDeck map colors your assets correctly.
 
 ---
 
-## Configuration
+## Measuring Performance & Latency
 
-These values should be consistent across `producer/` and `dashboard/`:
+End-to-end pipeline latency (the time from an event entering Kafka to being queryable in DuckDB after spatial joining) is heavily optimized. To verify the <30s SLA:
 
-- Kafka bootstrap server: `localhost:9092`
-- Kafka topic: `fire_events`
+1. Ensure the pipeline is running (`run_all.ps1`).
+2. Run the load generator: `python scripts/populate_for_latency_test.py`
+3. Wait approximately 20-30 seconds.
+4. Measure latency: `python tests/measure_latency.py`
 
-(If you support env vars, document them here later.)
-
----
-
-## Troubleshooting
-
-### Docker permission error (Linux)
-If you see permission errors talking to Docker:
-- Ensure your user is in the `docker` group:
-  ```bash
-  sudo usermod -aG docker $USER
-  ```
-- Then **log out and log back in** (or reboot).
-
----
-
-### Port 9092 already in use
-If Kafka fails to start because `9092` is busy:
-- Stop the other service using that port, or
-- Edit `infra/docker-compose.yml` to map Kafka to another host port (then update producer/dashboard config).
-
----
-
-### Topic does not exist
-If the producer errors with “unknown topic”:
-- Ensure Kafka is running: `./infra/start.sh`
-- Create topics again: `./infra/create_topics.sh`
-
----
-
-### Producer runs but dashboard shows nothing
-Phase 0 dashboard may be a shell / prototype depending on current implementation.
-
-Common checks:
-- Producer is actually sending to `localhost:9092`
-- Topic name matches (`fire_events`)
-- Dashboard is reading from the same topic / source
-
----
-
-## Roadmap
-
-### Phase 1 — Spatial “Collision”
-- Load static building footprints (GeoJSON/Parquet)
-- Spark Structured Streaming reads Kafka stream
-- Sedona spatial join: `fire_zone intersects building_polygon`
-- Output “at-risk buildings” to a sink (DB/topic/files)
-
-### Phase 2 — Real-Time Dashboard
-- Streamlit reads from the sink
-- PyDeck map: live fire points + glowing at-risk buildings
-
-### Phase 3 — Predictive Twin (Optional)
-- Add wind vector to project fire spread 10 minutes ahead
-- Show predicted risk zone
-
----
-
-## How to resume in a new session
-“I’m working on Wildfire-Twin. I have Dockerized Kafka running and a Python producer emitting JSON fire events to topic `fire_events`. Next is Phase 1: Spark 3.4.1 + Sedona spatial join against building footprints, and we’ll choose a sink so Streamlit can visualize at-risk buildings.”
+This will print a statistical report and generate a `latency_distribution.png` CDF/Histogram chart.
