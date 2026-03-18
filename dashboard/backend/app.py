@@ -95,63 +95,90 @@ CITIES = {
     "Santa Ana": (33.7455, -117.8677),
 }
 
-# --- Sidebar: Navigation & Settings ---
+# Only the named cities (excluding whole-state entry) for nearest-city lookup
+NAMED_CITIES = {k: v for k, v in CITIES.items() if "California" not in k}
+
+def find_nearest_city(lat: float, lon: float) -> tuple:
+    """Return (city_lat, city_lon) of the named city closest to the given coordinate."""
+    best, best_dist = None, float("inf")
+    for city_lat, city_lon in NAMED_CITIES.values():
+        dist = (lat - city_lat) ** 2 + (lon - city_lon) ** 2
+        if dist < best_dist:
+            best_dist = dist
+            best = (city_lat, city_lon)
+    return best or (34.0522, -118.2437)  # default: Los Angeles
+
+# --- Sidebar: Simulation Viewport Navigation ---
 with st.sidebar:
     st.header("Navigation")
     
     selected_city = st.selectbox(
-        "Teleport Viewport", list(CITIES.keys()), index=0
+        "Simulation Viewport", list(CITIES.keys()), index=0
     )
+    st.caption("Used in the Simulation tab to select your ignition area.")
 
     st.divider()
     st.header("Mode Selection")
     
     # We'll use Streamlit Tabs in the main view instead of radio buttons for the primary mode
     
-# --- Load Buildings (Static) ---
-center_lat, center_lon = CITIES[selected_city]
-
-if "California" in selected_city:
-    zoom_level = 6
-else:
-    zoom_level = 12
-
+# --- Load Buildings (Static, cached) ---
 with st.spinner("Processing state-wide assets..."):
     full_gdf = load_and_classify_buildings()
 
-# Filter to viewport unless viewing whole state
-if "California" in selected_city:
-    base_visible_gdf = full_gdf
+# --- Compute Live Viewport: nearest city to active fires, default LA ---
+_live_alerts_early = load_alerts(limit=500, source="live")
+if _live_alerts_early:
+    fire_lats = [a["fire_lat"] for a in _live_alerts_early if a.get("fire_lat")]
+    fire_lons = [a["fire_lon"] for a in _live_alerts_early if a.get("fire_lon")]
+    if fire_lats:
+        centroid_lat = sum(fire_lats) / len(fire_lats)
+        centroid_lon = sum(fire_lons) / len(fire_lons)
+        live_center_lat, live_center_lon = find_nearest_city(centroid_lat, centroid_lon)
+    else:
+        live_center_lat, live_center_lon = NAMED_CITIES["Los Angeles"]
 else:
-    base_visible_gdf = filter_to_viewport(full_gdf, center_lat, center_lon)
+    live_center_lat, live_center_lon = NAMED_CITIES["Los Angeles"]
+
+live_zoom = 12
+live_visible_gdf = filter_to_viewport(full_gdf, live_center_lat, live_center_lon)
+
+# --- Compute Simulation Viewport: driven by sidebar city selector ---
+sim_center_lat, sim_center_lon = CITIES[selected_city]
+if "California" in selected_city:
+    sim_zoom = 6
+    sim_visible_gdf = full_gdf
+else:
+    sim_zoom = 12
+    sim_visible_gdf = filter_to_viewport(full_gdf, sim_center_lat, sim_center_lon)
 
 # --- Main Content Area: Tabs ---
 tab_live, tab_sim = st.tabs(["Live Stream", "Simulation"])
 
 # Define parameterizable fragment for maps
 @st.fragment(run_every=5)
-def render_map_and_footer(source, map_key):
+def render_map_and_footer(source, map_key, viewport_lat, viewport_lon, zoom, visible_gdf):
     # Load fresh alerts
     alerts = load_alerts(limit=500, source=source)
     
-    # Copy base GDF so we don't mutate the static cached layer, then highlight
-    visible_gdf = apply_alert_highlighting(base_visible_gdf.copy(), alerts)
+    # Copy visible GDF so we don't mutate the cached layer, then highlight
+    gdf_copy = apply_alert_highlighting(visible_gdf.copy(), alerts)
     
     # Build Map Layers
-    static_layers = build_static_layers(visible_gdf)
+    static_layers = build_static_layers(gdf_copy)
     dynamic_layers = build_dynamic_layers(alerts)
     all_layers = static_layers + dynamic_layers
     
     # Render Map
     view_state = pdk.ViewState(
-        latitude=center_lat,
-        longitude=center_lon,
-        zoom=zoom_level,
+        latitude=viewport_lat,
+        longitude=viewport_lon,
+        zoom=zoom,
         pitch=45,
     )
     
     deck = pdk.Deck(
-        views=[pdk.View(type="MapView", controller=True)],  # Unlocked pan & zoom!
+        views=[pdk.View(type="MapView", controller=True)],
         layers=all_layers,
         initial_view_state=view_state,
         map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
@@ -167,8 +194,8 @@ def render_map_and_footer(source, map_key):
     col1, col2, col3 = st.columns(3)
     with col1:
         st.subheader("Category Distribution")
-        if not base_visible_gdf.empty:
-            st.dataframe(base_visible_gdf['category'].value_counts())
+        if not visible_gdf.empty:
+            st.dataframe(visible_gdf['category'].value_counts())
     with col2:
         st.subheader("Legend")
         st.markdown("**Medical** (Hospitals)")
@@ -223,8 +250,8 @@ with tab_live:
 
     live_alert_panel_live_tab()
     
-    # Render Live Map
-    render_map_and_footer("live", f"map_live_{selected_city}")
+    # Render Live Map — auto-centered on nearest city to live fires
+    render_map_and_footer("live", f"map_live_{live_center_lat:.2f}", live_center_lat, live_center_lon, live_zoom, live_visible_gdf)
 
 with tab_sim:
     st.subheader("Simulation Mode (What-If Scenarios)")
@@ -278,8 +305,8 @@ with tab_sim:
 
         live_alert_panel_sim_tab()
         
-    # Render Sim Map
-    render_map_and_footer("sim", f"map_sim_{selected_city}")
+    # Render Sim Map — viewport driven by sidebar city selector
+    render_map_and_footer("sim", f"map_sim_{selected_city}", sim_center_lat, sim_center_lon, sim_zoom, sim_visible_gdf)
 
 
 
