@@ -1,12 +1,13 @@
 # Wildfire-Twin (Real-Time Digital Twin)
-**Group Name:** N-Dimensional
-**Group Number:** 01
 
-### Group Members:
-- **Prince Savsaviya** | psavs001@ucr.edu | ID: 862548420
-- **Viswanadh R. Challa** | vchal008@ucr.edu | ID: 862548873
-- **Anish Ashok Kale** | akale014@ucr.edu | ID: 862547289
-- **Ali Rezayi Nejad** | areza018@ucr.edu | ID: 862392323
+**Group Name:** N-Dimensional  
+**Group Number:** 01  
+
+**Members:**
+- Prince Savsaviya (ID: 862548420) | psavs001@ucr.edu
+- Viswanadh R. Challa (ID: 862548873) | vchal008@ucr.edu
+- Anish Ashok Kale (ID: 862547289) | akale014@ucr.edu
+- Ali Rezayi Nejad (ID: 862392323) | areza018@ucr.edu
 
 A real-time "digital twin" prototype for wildfire monitoring and predictive risk analysis.
 It ingests simulated or live high-velocity IoT sensor events (fire/temperature/wind points) through Kafka, processes them in real-time using Apache Spark Structured Streaming with Apache Sedona for spatial joins against static infrastructure data (building footprints), and stores alerts in DuckDB. A Streamlit dashboard provides live visualization of at-risk buildings based on dynamic wind-cone projections.
@@ -143,11 +144,12 @@ This will print a statistical report and generate a `latency_distribution.png` C
 
 ---
 
-## Author Contributions (Source Code)
-**Prince Savsaviya:** Developed the data ingestion layer and Kafka producer scripts. Handled pipeline latency benchmarking and load testing (`scripts/populate_for_latency_test.py`, `tests/measure_latency.py`).
+## Author Contributions
 
-**Viswanadh R. Challa:** Orchestrated the Spark streaming and spatial processing engine (`spark_processor/spatial_engine.py`). Implemented the Sedona native SQL expressions for constructing directional wind cones and executing distributed topological intersections.
+**Prince Savsaviya:** Implemented the overall system architecture, Kafka producer scripts, and the simulation stress-testing frameworks. Designed the latency measurement pipelines and verified P95 SLAs.
 
-**Ali Rezayi Nejad:** Designed and developed the Streamlit user interface (`dashboard/backend/app.py` and `map_layers.py`). Implemented multi-scale PyDeck rendering using H3 hexagon aggregations and interactive simulation workflows.
+**Viswanadh R. Challa:** Developed the core Apache Spark and Sedona streaming job. Re-wrote the complex mathematical polygon UDFs into purely native JVM Spark SQL extensions, driving the primary 10x latency optimization.
 
-**Anish Ashok Kale:** Implemented the data storage layer and semantic enrichment scripts. Handled DuckDB sink abstractions (`alert_sink/`) and the conversion of raw geospatial datasets into optimized GeoParquet formats for visualization and ingestion.
+**Ali Rezayi Nejad:** Engineered the Streamlit dashboard, integrating DuckDB live polling, Folium interactive selectors, and PyDeck visualization. Formulated the H3HexagonLayer aggregation strategy for state-wide rendering.
+
+**Anish Ashok Kale:** Managed spatial data procurement and transformations. Designed the semantic string-categorization logic to avoid runtime POI joins, and constructed the H3 Resolution 7 dataset partitioning pipelines.
