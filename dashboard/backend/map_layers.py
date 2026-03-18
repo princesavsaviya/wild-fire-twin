@@ -16,13 +16,33 @@ BASE_RADIUS_METERS = 500
 EARTH_RADIUS = 6378137  # meters
 
 
-def build_static_layers(visible_gdf: gpd.GeoDataFrame) -> list:
+def build_static_layers(visible_gdf: gpd.GeoDataFrame, zoom: float) -> list:
     """
     Build PyDeck layers for the static building context.
-    These should only reload when the viewport city changes.
+    If zoom < 8, use H3HexagonLayer for an aggregated density view.
+    Otherwise, render exact building footprints.
     """
     if visible_gdf.empty:
         return []
+
+    if zoom < 8 and 'h3_res7' in visible_gdf.columns:
+        h3_counts = visible_gdf['h3_res7'].value_counts().reset_index()
+        h3_counts.columns = ['h3_res7', 'count']
+        h3_counts['hex'] = h3_counts['h3_res7'].apply(lambda x: format(int(x), 'x'))
+        return [
+            pdk.Layer(
+                "H3HexagonLayer",
+                h3_counts,
+                pickable=True,
+                stroked=True,
+                filled=True,
+                extruded=True,
+                get_hexagon="hex",
+                get_fill_color="[255 - (count * 2), 100 + count, count * 2]",
+                get_elevation="count",
+                elevation_scale=50,
+            )
+        ]
 
     return [
         pdk.Layer(

@@ -180,7 +180,7 @@ def render_map_and_footer(source, map_key, viewport_lat, viewport_lon, zoom, vis
     gdf_copy = apply_alert_highlighting(visible_gdf.copy(), alerts)
     
     # Build Map Layers
-    static_layers = build_static_layers(gdf_copy)
+    static_layers = build_static_layers(gdf_copy, zoom)
     dynamic_layers = build_dynamic_layers(alerts)
     all_layers = static_layers + dynamic_layers
     
@@ -198,7 +198,8 @@ def render_map_and_footer(source, map_key, viewport_lat, viewport_lon, zoom, vis
         initial_view_state=view_state,
         map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
         tooltip={
-            "text": "Facility: {building_name}\nCategory: {category}\nRaw Type: {building_type}"
+            "html": "<b>{building_name}</b> {category}<br/><b>Density:</b> {count} buildings",
+            "style": {"color": "white", "font-family": "sans-serif"}
         },
     )
     

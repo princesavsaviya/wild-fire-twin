@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from alert_sink.duckdb_store import get_latest_alerts, get_alert_count
 
 # Paths
-DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "california_essential_buildings.parquet")
+DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "california_essential_buildings_indexed.parquet")
 DATA_PATH = os.path.abspath(DATA_PATH)
 
 
