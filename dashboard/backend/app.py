@@ -11,6 +11,8 @@ import os
 import sys
 import json
 import uuid
+import random
+import math
 from datetime import datetime, timezone
 import streamlit as st
 import pydeck as pdk
@@ -37,7 +39,8 @@ from scripts.fetch_weather_data import fetch_live_weather
 from alert_sink.duckdb_store import delete_simulations
 
 # --- Kafka Simulation Logic ---
-def trigger_simulation(lat: float, lon: float, temp: float):
+def trigger_simulation(lat: float, lon: float, temp: float, count: int = 1, radius_miles: float = 0.0):
+    """Publish `count` fire events randomly scattered within `radius_miles` of (lat, lon)."""
     bootstrap = os.getenv("KAFKA_BOOTSTRAP", "localhost:9092")
     topic = os.getenv("KAFKA_TOPIC_INPUT", "fire_events")
     producer = KafkaProducer(
@@ -45,6 +48,10 @@ def trigger_simulation(lat: float, lon: float, temp: float):
         value_serializer=lambda v: json.dumps(v).encode("utf-8"),
         acks="all"
     )
+    
+    # Approx degrees per mile
+    DEG_PER_MILE_LAT = 1.0 / 69.0
+    DEG_PER_MILE_LON = 1.0 / (69.0 * math.cos(math.radians(lat)))
     
     live_weather = fetch_live_weather(lat, lon)
     if not live_weather:
@@ -54,23 +61,31 @@ def trigger_simulation(lat: float, lon: float, temp: float):
             "wind_speed_mph": 0.0,
             "wind_direction_deg": 0.0
         }
-        
-    event = {
-        "event_time": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "event_id": f"sim_{uuid.uuid4()}",
-        "sensor_id": "dashboard_sim",
-        "latitude": lat,
-        "longitude": lon,
-        "temperature": float(live_weather["temperature_f"]),
-        "is_fire": True,
-        "wind_speed_mph": float(live_weather["wind_speed_mph"]),
-        "wind_direction_deg": float(live_weather["wind_direction_deg"]),
-        "humidity_percent": float(live_weather["humidity_percent"])
-    }
     
-    producer.send(topic, value=event)
+    for _ in range(max(1, count)):
+        # Random polar offset within the requested radius
+        r = radius_miles * math.sqrt(random.random())  # sqrt for uniform disc distribution
+        theta = random.uniform(0, 2 * math.pi)
+        fire_lat = lat + r * math.cos(theta) * DEG_PER_MILE_LAT
+        fire_lon = lon + r * math.sin(theta) * DEG_PER_MILE_LON
+        
+        event = {
+            "event_time": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "event_id": f"sim_{uuid.uuid4()}",
+            "sensor_id": "dashboard_sim",
+            "latitude": fire_lat,
+            "longitude": fire_lon,
+            "temperature": float(live_weather["temperature_f"]),
+            "is_fire": True,
+            "wind_speed_mph": float(live_weather["wind_speed_mph"]),
+            "wind_direction_deg": float(live_weather["wind_direction_deg"]),
+            "humidity_percent": float(live_weather["humidity_percent"])
+        }
+        producer.send(topic, value=event)
+    
     producer.flush()
     producer.close()
+    return count
 
 # --- Page Config ---
 st.set_page_config(layout="wide", page_title="California Essential Buildings")
@@ -275,13 +290,16 @@ with tab_sim:
 
         with st.form("sim_form"):
             st.write(f"**Target Coordinates:** `{sim_lat:.5f}`, `{sim_lon:.5f}`")
-            st.caption("2. Set fallback conditions and simulate.")
+            st.caption("2. Set fire parameters and simulate.")
             sim_temp = st.slider("Fallback Temp (F)", min_value=50.0, max_value=120.0, value=85.0)
+            sim_count = st.slider("Number of Fire Events", min_value=1, max_value=20, value=1, step=1)
+            sim_radius = st.slider("Scatter Radius (miles)", min_value=0.0, max_value=10.0, value=0.0, step=0.5,
+                                   help="How far from the clicked point fires can randomly scatter. 0 = exact point.")
             
             if st.form_submit_button("Simulate Fire Here"):
-                with st.spinner("Publishing simulation to Kafka..."):
-                    trigger_simulation(sim_lat, sim_lon, sim_temp)
-                st.success("Simulation triggered!")
+                with st.spinner(f"Publishing {sim_count} fire event(s) to Kafka..."):
+                    n = trigger_simulation(sim_lat, sim_lon, sim_temp, count=sim_count, radius_miles=sim_radius)
+                st.success(f"{n} fire event(s) triggered within {sim_radius:.1f} mi radius!")
 
         if st.button("Clear Previous Simulations", use_container_width=True):
             delete_simulations()
