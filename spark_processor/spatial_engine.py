@@ -3,6 +3,8 @@ import sys
 import json
 import typing
 import shutil
+import math
+import uuid
 
 # Patch for Python 3.13+ compatibility with PySpark 3.4.1
 # PySpark tries to import from typing.io, which was removed in Python 3.13
@@ -16,8 +18,7 @@ if sys.version_info >= (3, 13) and not hasattr(typing, 'io'):
     sys.modules['typing.io'] = mock_io
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json, struct, to_json, expr, udf
-import math
+from pyspark.sql.functions import col, from_json, struct, to_json, expr, udf, radians, sin, cos, format_string
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType, BooleanType
 
 from sedona.spark import SedonaContext
@@ -28,7 +29,6 @@ INPUT_TOPIC = os.getenv("KAFKA_TOPIC_INPUT", "fire_events")
 OUTPUT_TOPIC = os.getenv("KAFKA_TOPIC_OUTPUT", "at_risk_assets")
 # Point to the new CA Master Dataset
 BUILDING_DATA_PATH = os.path.join(os.getcwd(), "data", "california_essential_buildings.parquet")
-import uuid
 CHECKPOINT_DIR = os.path.join(os.getcwd(), "data", "spark_checkpoints", f"fire_twin_{uuid.uuid4().hex}")
 
 
@@ -73,6 +73,7 @@ def create_spark_session():
                 "org.datasyslab:geotools-wrapper:1.7.0-28.5,"
                 "org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1") \
         .config("spark.sql.streaming.forceDeleteTempCheckpointLocation", "true") \
+        .config("spark.sql.shuffle.partitions", "2") \
         .config("spark.driver.memory", "4g") \
         .getOrCreate()
     
@@ -130,45 +131,13 @@ def main():
         .select(from_json(col("json_payload"), event_schema).alias("data")) \
         .select("data.*")
         
-    @udf(returnType=StringType())
-    def calculate_wind_cone_wkt(lat: float, lon: float, wind_mph: float, wind_deg: float) -> str:
-        if lat is None or lon is None:
-            return None
-        wind_mph = wind_mph or 0.0
-        wind_deg = wind_deg or 0.0
-        
-        BASE_RADIUS_METERS = 500
-        EARTH_RADIUS = 6378137
-        
-        length_meters = BASE_RADIUS_METERS * (1.0 + (wind_mph * 0.1))
-        travel_deg = (wind_deg + 180) % 360
-        travel_rad = math.radians(travel_deg)
-        angle_offset = math.radians(30)
-        
-        left_rad = travel_rad - angle_offset
-        right_rad = travel_rad + angle_offset
-
-        left_lat = lat + (length_meters / EARTH_RADIUS) * math.cos(left_rad) * (180 / math.pi)
-        left_lon = lon + (length_meters / EARTH_RADIUS) * math.sin(left_rad) * (180 / math.pi) / math.cos(math.radians(lat))
-
-        right_lat = lat + (length_meters / EARTH_RADIUS) * math.cos(right_rad) * (180 / math.pi)
-        right_lon = lon + (length_meters / EARTH_RADIUS) * math.sin(right_rad) * (180 / math.pi) / math.cos(math.radians(lat))
-        
-        return f"POLYGON (({lon} {lat}, {right_lon} {right_lat}, {left_lon} {left_lat}, {lon} {lat}))"
-
-    parsed_stream = parsed_stream.withColumn(
-        "wind_cone_wkt",
-        calculate_wind_cone_wkt(col("latitude"), col("longitude"), col("wind_speed_mph"), col("wind_direction_deg"))
-    )
-    
     parsed_stream.createOrReplaceTempView("fire_events_stream")
 
     # 5. Spatial Join Processing with Predictive Wind Modeling
-    # We create a base circle, scale it into an ellipse based on wind speed, 
-    # and rotate it based on wind direction to form a predictive risk cone.
-    # Base radius is ~500m. Wind speed multiplier scales it forward.
+    # We replace the Python UDF with a native SQL expression to avoid serialization overhead.
+    # We also use a broadcast hint for the static buildings table.
     risk_query = """
-        SELECT 
+        SELECT /*+ BROADCAST(b) */
             f.event_id,
             f.event_time,
             f.latitude as fire_lat,
@@ -180,9 +149,22 @@ def main():
             b.building_type,
             b.building_name,
             ST_AsText(b.geometry) as building_geom
-        FROM fire_events_stream f
+        FROM (
+            SELECT *,
+                ST_GeomFromWKT(
+                    format_string("POLYGON((%f %f, %f %f, %f %f, %f %f))",
+                        longitude, latitude,
+                        longitude + (500 * (1.0 + wind_speed_mph * 0.1) / 111000.0) * sin(radians(wind_direction_deg + 180 + 30)) / cos(radians(latitude)),
+                        latitude + (500 * (1.0 + wind_speed_mph * 0.1) / 111000.0) * cos(radians(wind_direction_deg + 180 + 30)),
+                        longitude + (500 * (1.0 + wind_speed_mph * 0.1) / 111000.0) * sin(radians(wind_direction_deg + 180 - 30)) / cos(radians(latitude)),
+                        latitude + (500 * (1.0 + wind_speed_mph * 0.1) / 111000.0) * cos(radians(wind_direction_deg + 180 - 30)),
+                        longitude, latitude
+                    )
+                ) as wind_cone
+            FROM fire_events_stream
+        ) f
         JOIN buildings b
-        ON ST_Intersects(ST_GeomFromWKT(f.wind_cone_wkt), b.geometry)
+        ON ST_Intersects(f.wind_cone, b.geometry)
         WHERE f.is_fire = true
     """
 
@@ -198,6 +180,7 @@ def main():
         .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP) \
         .option("topic", OUTPUT_TOPIC) \
         .option("checkpointLocation", CHECKPOINT_DIR) \
+        .trigger(processingTime='1 seconds') \
         .outputMode("append") \
         .start()
 

@@ -97,7 +97,6 @@ check_data_exists()
 
 # --- City Coordinate Registry ---
 CITIES = {
-    "California (Whole State)": (36.7783, -119.4179),
     "Riverside": (33.9533, -117.3961),
     "Los Angeles": (34.0522, -118.2437),
     "San Francisco": (37.7749, -122.4194),
@@ -108,6 +107,7 @@ CITIES = {
     "Bakersfield": (35.3733, -119.0187),
     "Anaheim": (33.8366, -117.9143),
     "Santa Ana": (33.7455, -117.8677),
+    "California (Whole State)": (36.7783, -119.4179),
 }
 
 # Only the named cities (excluding whole-state entry) for nearest-city lookup
