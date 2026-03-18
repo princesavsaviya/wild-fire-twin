@@ -1,9 +1,15 @@
 # Wildfire-Twin (Real-Time Digital Twin)
+**Group Name:** N-Dimensional
+**Group Number:** 01
+
+### Group Members:
+- **Prince Savsaviya** | psavs001@ucr.edu | ID: 862548420
+- **Viswanadh R. Challa** | vchal008@ucr.edu | ID: 862548873
+- **Anish Ashok Kale** | akale014@ucr.edu | ID: 862547289
+- **Ali Rezayi Nejad** | areza018@ucr.edu | ID: 862392323
 
 A real-time "digital twin" prototype for wildfire monitoring and predictive risk analysis.
 It ingests simulated or live high-velocity IoT sensor events (fire/temperature/wind points) through Kafka, processes them in real-time using Apache Spark Structured Streaming with Apache Sedona for spatial joins against static infrastructure data (building footprints), and stores alerts in DuckDB. A Streamlit dashboard provides live visualization of at-risk buildings based on dynamic wind-cone projections.
-
-This project is being implemented by Prince Savsaviya, Viswanadh Rahul Challa, Anish A. Kale, and Ali Rezayi Nejad at UC Riverside.
 
 ---
 
@@ -134,3 +140,14 @@ End-to-end pipeline latency (the time from an event entering Kafka to being quer
 4. Measure latency: `python tests/measure_latency.py`
 
 This will print a statistical report and generate a `latency_distribution.png` CDF/Histogram chart.
+
+---
+
+## Author Contributions (Source Code)
+**Prince Savsaviya:** Developed the data ingestion layer and Kafka producer scripts. Handled pipeline latency benchmarking and load testing (`scripts/populate_for_latency_test.py`, `tests/measure_latency.py`).
+
+**Viswanadh R. Challa:** Orchestrated the Spark streaming and spatial processing engine (`spark_processor/spatial_engine.py`). Implemented the Sedona native SQL expressions for constructing directional wind cones and executing distributed topological intersections.
+
+**Ali Rezayi Nejad:** Designed and developed the Streamlit user interface (`dashboard/backend/app.py` and `map_layers.py`). Implemented multi-scale PyDeck rendering using H3 hexagon aggregations and interactive simulation workflows.
+
+**Anish Ashok Kale:** Implemented the data storage layer and semantic enrichment scripts. Handled DuckDB sink abstractions (`alert_sink/`) and the conversion of raw geospatial datasets into optimized GeoParquet formats for visualization and ingestion.
