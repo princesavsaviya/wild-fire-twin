@@ -9,11 +9,11 @@ This project is being implemented by Prince Savsaviya, Viswanadh Rahul Challa, A
 
 ## Current Status (Phases 1-3 Complete)
 
-✅ **Kafka Data Ingestion**: Robust message brokering via local Docker stack.  
-✅ **Apache Spark & Sedona Spatial Engine**: Real-time evaluation of fire sensor data against a master building dataset. Constructs predictive wind cones using native SQL optimizations.   
-✅ **DuckDB Alert Sink**: High-performance, low-latency persistent storage for active fire threats.  
-✅ **Live Streamlit Dashboard**: PyDeck-accelerated 3D mapping of live alerts, infrastructure distribution, and a "What-If" simulation mode for dropping localized fires.  
-✅ **Latency Optimized**: Sustains < 30s p95 end-to-end latency (tested at 6-18s) using native expressions and optimized micro-batch triggers.
+**Kafka Data Ingestion**: Robust message brokering via local Docker stack.  
+**Apache Spark & Sedona Spatial Engine**: Real-time evaluation of fire sensor data against a master building dataset. Constructs predictive wind cones using native SQL optimizations.   
+**DuckDB Alert Sink**: High-performance, low-latency persistent storage for active fire threats.  
+**Live Streamlit Dashboard**: PyDeck-accelerated 3D mapping of live alerts, infrastructure distribution, and a "What-If" simulation mode for dropping localized fires.  
+**Latency Optimized**: Sustains < 30s p95 end-to-end latency (tested at 6-18s) using native expressions and optimized micro-batch triggers.
 
 ---
 
