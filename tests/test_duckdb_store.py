@@ -3,7 +3,10 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-os.environ["DUCKDB_PATH"] = os.path.join(os.path.dirname(os.path.dirname(__file__)), "storage", "test_alerts.duckdb")
+base_dir = os.path.dirname(os.path.dirname(__file__))
+os.environ["DUCKDB_PATH"] = os.path.join(base_dir, "storage", "test_alerts.duckdb")
+os.environ["DUCKDB_PATH_LIVE"] = os.path.join(base_dir, "storage", "test_alerts_live.duckdb")
+os.environ["DUCKDB_PATH_SIM"] = os.path.join(base_dir, "storage", "test_alerts_sim.duckdb")
 
 from alert_sink.duckdb_store import (
     init_db, insert_alert, insert_alerts_batch,
@@ -55,10 +58,11 @@ def test():
     assert get_alert_count() == 0, "Expected 0 after clear"
     print("6. Clear OK")
 
-    # Cleanup test DB
-    db_path = os.environ["DUCKDB_PATH"]
-    if os.path.exists(db_path):
-        os.remove(db_path)
+    # Cleanup test DBs
+    for var in ["DUCKDB_PATH", "DUCKDB_PATH_LIVE", "DUCKDB_PATH_SIM"]:
+        db_path = os.environ.get(var)
+        if db_path and os.path.exists(db_path):
+            os.remove(db_path)
 
     print("")
     print("All DuckDB store tests PASSED")

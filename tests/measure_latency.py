@@ -11,7 +11,7 @@ import pandas as pd
 from datetime import datetime
 
 # Point to the active DuckDB file
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "storage", "alerts.duckdb")
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "storage", "alerts_sim.duckdb")
 
 def main():
     if not os.path.exists(DB_PATH):
@@ -46,7 +46,7 @@ def main():
         min_latency = df['latency_ms'].min() / 1000.0
         
         print("\n" + "="*50)
-        print("🚀 PIPELINE LATENCY REPORT (Last 500 Alerts)")
+        print(" PIPELINE LATENCY REPORT (Last 500 Alerts)")
         print("="*50)
         print(f"Total Evaluated : {len(df)} alerts")
         print(f"Average Latency : {avg_latency:.3f} seconds")
@@ -55,9 +55,9 @@ def main():
         print("="*50)
         
         if avg_latency < 30.0:
-            print("\n✅ SUCCESS: Pipeline successfully meets the < 30s latency claim!")
+            print("\n SUCCESS: Pipeline successfully meets the < 30s latency claim!")
         else:
-            print("\n⚠️ WARNING: Pipeline exceeds the 30s latency claim. Consider scaling Spark executors.")
+            print("\n WARNING: Pipeline exceeds the 30s latency claim. Consider scaling Spark executors.")
             
         # --- Generate Chart for PPT ---
         import matplotlib.pyplot as plt
@@ -77,7 +77,7 @@ def main():
         
         chart_path = os.path.join(os.path.dirname(__file__), 'latency_distribution.png')
         plt.savefig(chart_path, dpi=300)
-        print(f"\n📊 Automatically saved chart for PowerPoint: {chart_path}")
+        print(f"\n Automatically saved chart for PowerPoint: {chart_path}")
             
     except Exception as e:
         print(f"Failed to query database: {e}")

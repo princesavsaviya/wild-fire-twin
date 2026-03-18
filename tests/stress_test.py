@@ -21,9 +21,10 @@ def get_producer() -> KafkaProducer:
     return KafkaProducer(
         bootstrap_servers=[BOOTSTRAP],
         value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-        acks=0,  # "Fire and forget" for maximum throughput in stress testing
-        linger_ms=10, 
-        batch_size=16384 * 4
+        acks="all",
+        linger_ms=5,
+        batch_size=16384 * 4,
+        max_block_ms=10000
     )
 
 def worker(producer: KafkaProducer, thread_id: int, count: int, base_lat: float, base_lon: float):
@@ -66,7 +67,7 @@ def main():
     throughput = TOTAL_EVENTS / duration
     
     print("\n" + "="*50)
-    print("🚦 STRESS TEST RESULTS")
+    print(" STRESS TEST RESULTS")
     print("="*50)
     print(f"Total Sent     : {TOTAL_EVENTS} events")
     print(f"Total Time     : {duration:.2f} seconds")
@@ -96,7 +97,7 @@ def main():
         
         chart_path = os.path.join(os.path.dirname(__file__), 'throughput_benchmark.png')
         plt.savefig(chart_path, dpi=300)
-        print(f"\n📊 Automatically saved chart for PowerPoint: {chart_path}")
+        print(f"\n Automatically saved chart for PowerPoint: {chart_path}")
     except ImportError:
         pass
 

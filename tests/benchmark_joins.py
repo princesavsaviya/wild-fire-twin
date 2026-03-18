@@ -96,7 +96,7 @@ def main():
 
     print("\n" + "="*50)
     if duration2 > 0:
-        print(f"🚀 PERFORMANCE GAIN: {duration1 / duration2:.1f}x Speedup leveraging Apache Sedona!")
+        print(f" PERFORMANCE GAIN: {duration1 / duration2:.1f}x Speedup leveraging Apache Sedona!")
     print("="*50)
     
     # --- Generate Chart for PPT ---
@@ -123,14 +123,14 @@ def main():
                         
         if duration2 > 0:
             speedup = duration1 / duration2
-            plt.figtext(0.5, 0.02, f"🚀 {speedup:.1f}x Speedup leveraging Apache Sedona QuadTree/R-Tree", 
+            plt.figtext(0.5, 0.02, f" {speedup:.1f}x Speedup leveraging Apache Sedona QuadTree/R-Tree", 
                        ha="center", fontsize=13, fontweight='bold', bbox={"facecolor":"#ffeaa7", "alpha":0.5, "pad":8})
             
         plt.tight_layout(rect=[0, 0.08, 1, 1])
         
         chart_path = os.path.join(os.path.dirname(__file__), 'spatial_join_benchmark.png')
         plt.savefig(chart_path, dpi=300)
-        print(f"\n📊 Automatically saved chart for PowerPoint: {chart_path}")
+        print(f"\n Automatically saved chart for PowerPoint: {chart_path}")
     except ImportError:
         pass
     
