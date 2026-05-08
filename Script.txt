@@ -1,0 +1,82 @@
+Presenter 1: Prince Savsaviya
+
+(Topics: Introduction, Motivation, Big Data Relevance)
+
+Slide 1: Title Slide
+Prince: "Hi everyone, I’m Prince Savsaviya, and I’ll be kicking things off for Team N-Dimensional. Before we dive in, let me ask for a quick show of hands: how many of you have had to compulsively check an air quality app, or stay indoors because the sky turned orange from California wildfire smoke over the past few years? (Pause for audience reaction). Exactly. Almost all of us. Wildfires are a massive, recurring reality for us here in California, and that is exactly what inspired our project: A Real-Time Wildfire Resilience Digital Twin."
+
+Slide 2: Background & Motivation
+Prince: "The core threat we are addressing is the increasing danger wildfires pose to infrastructure and human safety in urban-dense regions. Currently, there is a major gap in how we monitor these fires. Existing systems often rely on static data or delayed reporting, meaning they lack the real-time integration necessary to make split-second emergency decisions.
+Our solution is a 'Digital Twin'—a system that mirrors the real-world environment in real time. Instead of just looking at a static map of a fire, our system fuses dynamic fire events with static infrastructure to provide continuously updated representations of risk."
+
+Slide 3: Project Overview & Big Data Relevance
+Prince: "Because this is a Big Data Management course, we wanted to build a system that truly pushes the limits of volume, velocity, and variety.
+Our system goal is to support rapid situational awareness.
+
+In terms of Volume, we aren't just looking at a small neighborhood; we are processing over 11.5 million building polygons covering the entire state of California.
+
+For Velocity, we designed a streaming pipeline using Apache Kafka to ingest high-velocity fire events as they happen.
+
+And for Variety, we are fusing dynamic sensor feeds—like temperature, wind speed, and direction—with static infrastructure geospatial data.
+To talk about how our system stands out from existing research and how we architected this massive pipeline, I’ll hand it over to Anish."
+
+Presenter 2: Anish Ashok Kale
+
+(Topics: Related Work, System Architecture, Data Engineering & Storage)
+
+Slide 4: Related Work
+Anish: "Thanks, Prince. Hi everyone, my name is Anish Ashok Kale. When we looked at the current landscape of wildfire research, we noticed it is generally split into two camps. On one side, you have predictive modeling—like the 'Next Day Wildfire Spread' models—which are great for forecasting but lack live system integration. On the other side, you have theoretical digital twin frameworks that haven't actually been implemented.
+The research gap is a lack of an end-to-end, live implementation. Our contribution bridges this gap. We built a concrete system that connects live event ingestion directly to an infrastructure-aware dashboard, providing multi-resolution context in real time."
+
+Slide 5: System Architecture
+Anish: "Here is a high-level look at how we made that happen. Our system operates across four decoupled layers.
+
+Ingestion: As Prince mentioned, we use a Kafka topic (fire_events) to capture high-velocity streams.
+
+Processing: We use Apache Spark and Apache Sedona to do the heavy lifting for geospatial reasoning.
+
+Storage: We use a hybrid storage layer—DuckDB acts as a low-latency sink for live alerts, while partitioned GeoParquet files hold our static building context.
+
+Visualization: Finally, the frontend dashboard retrieves these alerts to render the risk zones."
+
+Slide 6: Data Engineering & Enrichment
+Anish: "To make the system infrastructure-aware, we had to do some serious data engineering. We took 11.5 million raw Microsoft building footprints and converted them into a Sedona-compatible GeoParquet format. But a polygon on a map doesn't tell you if a building is a shed or a hospital.
+So, we performed a semantic spatial join using the ST_Contains function to cross-reference these buildings with OpenStreetMap Points of Interest. The key outcome here is that we pre-identified roughly 80,000 essential buildings—hospitals, schools, and emergency services. Now, when a fire breaks out, the system immediately surfaces the most critical at-risk assets.
+Now that our static data is prepped and stored, how do we process live fire threats against it? For that, Viswanadh will walk you through our real-time risk modeling."
+
+Presenter 3: Viswanadh R. Challa
+
+(Topics: Stream Processing, Geospatial Analytics, Scalability)
+
+Slide 7: Real-Time Risk Modeling
+Viswanadh: "Thank you, Anish. Hello everyone, I’m Viswanadh R. Challa, and I focused on the stream processing and geospatial analytics of our project.
+Once a fire event enters our pipeline, we apply geospatial reasoning. Instead of just drawing a naive circular buffer around a fire coordinate, we implemented a Directional Model. We transform the incoming event into a cone-shaped risk region that is dynamically scaled and oriented based on live environmental factors, like wind speed and wind direction.
+From there, Spark and Sedona handle the Infrastructure Intersection. The system calculates exactly which of those 80,000 essential buildings fall into the predicted spread zone and generates prioritized alert records on the fly."
+
+Slide 8: Evaluation Methodology & Scalability
+Viswanadh: "Processing spatial intersections over millions of polygons is computationally expensive, so scalability was a massive priority for us.
+We achieved a city-scale load time of under 5 seconds for rendering buildings and alerts. How did we do this with 11.5 million polygons? We used H3 Spatial Indexing. At a statewide level, data is aggregated into coarse hexagonal cells, dramatically reducing the rendering overhead.
+Furthermore, we use Partition Pruning. When a fire occurs in a specific area, our system only reads the GeoParquet partitions for that specific spatial region. This completely avoids full dataset scans and drastically speeds up our DuckDB queries.
+So, we've processed the data and generated alerts in record time. But a digital twin is only as good as what you can actually see and interact with. To show you our user interface and wrap up our findings, I’ll pass the mic to Ali."
+
+Presenter 4: Ali Rezayi Nejad
+
+(Topics: Dashboard Visualization, Simulation, Conclusion)
+
+Slide 9: Simulation & Evaluation
+Ali: "Thanks Viswanadh! Hi class, I’m Ali Rezayi Nejad, and I designed the visualization and interactive dashboard layer of our digital twin.
+To evaluate our pipeline, we built an interactive simulation workflow using Streamlit and PyDeck. Users can literally click on the map, inject synthetic fire events, tweak custom weather parameters like wind or humidity, and watch the system react.
+The results were fantastic: across all our tested scenarios, the system successfully generated intuitive risk regions and correctly highlighted the at-risk infrastructure on the map.
+A major win here was our system's responsiveness. By intentionally decoupling our DuckDB analytical store from the upstream Kafka stream, we ensured that even if a massive burst of fire events floods the ingestion layer, the user interface remains completely stable and lag-free for the decision-maker."
+
+Slide 10: Conclusion & Future Directions
+Ali: "To wrap up, our key takeaway is that we successfully built a scalable, multi-resolution digital twin using a modern Big Data stack: Kafka, Spark, Sedona, and DuckDB. We've provided an end-to-end pipeline that allows emergency planners to perform 'what-if' analyses under varying environmental conditions.
+Looking forward, there are three exciting directions for this project:
+
+Live Data: Transitioning from our simulation feeds directly to live satellite data feeds, like NASA FIRMS.
+
+Terrain Dynamics: Upgrading our spread model to factor in elevation and fuel loads for even higher fidelity.
+
+Decision Support: Adding features like automated evacuation routing.
+
+That concludes our presentation on building a real-time wildfire digital twin. Thank you all for your time, and we would now love to open the floor to any questions!"

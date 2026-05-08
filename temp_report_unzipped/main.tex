@@ -1,0 +1,308 @@
+%\documentclass[11pt]{article}
+
+\documentclass[acmsmall,screen,nonacm]{acmart}
+% 'acmsmall' = Guaranteed single column body text
+
+% --- PACKAGES ---
+\usepackage{filecontents}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{array}
+\usepackage{fancyhdr}
+\usepackage[margin=1in]{geometry}
+\usepackage{parskip}
+\usepackage{setspace}
+\usepackage[hidelinks]{hyperref}
+
+\usepackage{tabularx}
+\usepackage{amssymb} % for \checkmark
+
+% --- PACKAGES ---
+\usepackage{filecontents}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{array}
+\usepackage{fancyhdr}
+
+
+\setstretch{1.08}
+% --- DISABLE DEFAULT TITLE PROCESSING ---
+
+\makeatletter
+\makeatother
+
+% Clear default ACM headers
+\pagestyle{fancy}
+\fancyhf{} 
+
+\begin{document}
+
+
+\begin{center}
+    % TITLE
+    {\Huge \textbf{Project Literature Survey :: Real-Time Wildfire Resilience Digital Twin}} \\
+    \vspace{0.5em}
+    {\Large \textbf{Group Name: N-Dimentional}} \\
+    \vspace{2em}
+
+    % AUTHORS TABLE
+    % \hspace*{-2cm} pulls the table left so 4 columns fit easily
+    \hspace*{-1.5cm} 
+    \begin{tabular}{ >{\centering\arraybackslash}p{3.8cm} >{\centering\arraybackslash}p{3.8cm} >{\centering\arraybackslash}p{3.8cm} >{\centering\arraybackslash}p{3.8cm} }
+        
+        % ROW 1: Names
+        \textbf{Prince Savsaviya}\textsuperscript{*} & \textbf{Viswanadh R. Challa}\textsuperscript{*} & \textbf{Anish Ashok Kale}\textsuperscript{*} & \textbf{Ali Rezayi Nejad}\textsuperscript{*} \\
+        
+        % ROW 2: IDs
+        \small ID: 862548420 & \small ID: 862548873 & \small ID: 862547289 & \small ID: 862392323 \\
+        
+        % ROW 3: University
+        \small UC Riverside & \small UC Riverside & \small UC Riverside & \small UC Riverside \\
+        
+        % ROW 4: Emails
+        \small \href{mailto:psavs001@ucr.edu}{psavs001@ucr.edu} & 
+        \small \href{mailto:vchal008@ucr.edu}{vchal008@ucr.edu} & 
+        \small \href{mailto:akale014@ucr.edu}{akale014@ucr.edu} & 
+        \small \href{mailto:areza018@ucr.edu}{areza018@ucr.edu} \\
+        
+    \end{tabular}
+    
+    \vspace{1em}
+    % FOOTNOTE
+    {\footnotesize \textsuperscript{*}Department of Computer Science, University of California, Riverside}
+    \vspace{2em}
+\end{center}
+
+\date{February 19, 2026}
+
+
+\section*{Abstract}
+This literature survey supports a team project that builds a \emph{wildfire digital twin}: a continuously
+updated virtual representation of wildfire conditions that ingests heterogeneous streams (satellite active-fire
+detections, weather forecasts, fuel/topography layers, and optional ground sensors), performs real-time
+spatiotemporal analytics, and produces actionable outputs such as risk indices, predicted spread envelopes,
+and alerting dashboards.
+
+We categorize prior work into: (1) digital-twin and dynamic data-driven foundations, (2) wildfire spread and
+fire--atmosphere simulation models, (3) remote sensing fire detection products, (4) data assimilation and
+real-time model updating, (5) cyberinfrastructure and decision-support platforms for wildfire, and (6) big-data
+streaming and geospatial processing frameworks. Across these categories we identify a gap in end-to-end
+reproducible pipelines that combine streaming ingestion, scalable geospatial joins, and model updating in a
+way that is deployable by small teams. The proposed project targets that gap with a lightweight, open-source
+architecture.
+
+\section{Project context and key terms}
+A \textbf{digital twin (DT)} is a digital representation of a physical system that stays synchronized with the
+real system through data, enabling monitoring, forecasting, and decision support. Early DT definitions
+emphasize a tight loop between the physical asset, its virtual counterpart, and the data connections between
+them \cite{grieves2014digitaltwin}.
+
+A wildfire DT is naturally a \textbf{dynamic data-driven application system (DDDAS)}, where streaming
+observations are assimilated into running simulations and, optionally, simulations can influence where/what to
+measure next (e.g., camera tasking). Darema formalized DDDAS as a paradigm that injects online data into an
+executing model and can steer measurements in return \cite{darema2004dddas}.
+
+\textbf{Wildfire Digital Twin objective for this project.} We aim to build an end-to-end pipeline that
+(i) ingests near-real-time fire detections and environmental context, (ii) computes spatiotemporal risk layers
+and simple spread forecasts, and (iii) serves results via an interactive map/dashboard and alerts. The remainder
+of this survey groups related work into categories that directly map to these requirements.
+
+\section{Literature selection scope}
+We prioritized peer-reviewed or widely adopted technical reports that are frequently referenced in wildfire
+science, remote sensing, or scalable data systems. Selection criteria: (a) practical influence on operational
+wildfire modeling or monitoring, (b) relevance to real-time or data-driven updating, and (c) architectural
+relevance to big-data streaming and geospatial analytics. The resulting set includes 20 works.
+
+\section{Related work by category}
+
+\subsection{Digital twin and dynamic data-driven foundations}
+This category defines what it means to be a digital twin (continuous synchronization, actionable state
+estimation) and why wildfire DTs require dynamic data-driven model updating.
+
+\textbf{Digital Twin baseline.} Grieves describes the DT as a virtual representation tightly linked to the
+physical system through data connections, enabling monitoring and prediction across the lifecycle
+\cite{grieves2014digitaltwin}. For wildfire, the analogy is the evolving physical fire and a coupled virtual model
+representing spread and risk.
+
+\textbf{DDDAS paradigm.} Darema introduces DDDAS as applications that incorporate online data into executing
+simulations and can dynamically steer measurement processes \cite{darema2004dddas}. Wildfire DTs are a direct
+instantiation: ingest satellite detections and weather to update model state, and potentially request
+higher-resolution imagery where uncertainty is high.
+
+\textbf{Wildfire DT concept and roadmaps.} Halem et al.\ discuss a dynamic data-driven wildfire digital twin vision
+emphasizing real-time data fusion, rapid prediction, and uncertainty-aware decision support \cite{halem2024wdt}.
+Huang et al.\ summarize progress and challenges in wildfire digital twins (data latency, model fidelity,
+assimilation, and compute constraints) and propose an integrated wildfire DT framing detection, simulation, and
+prediction as a unified system \cite{huang2024wdtprogress}.
+
+\textbf{Relevance to our project.} These works motivate our core loop:
+(data ingestion) $\rightarrow$ (state estimation / risk layers) $\rightarrow$ (forecast) $\rightarrow$ (decision support),
+and justify treating the system as a continuously updating DT rather than a one-off offline analysis.
+
+\subsection{Wildfire spread and fire--atmosphere simulation models}
+Wildfire DTs often rely on a simulation core to extrapolate from current state to near-future outcomes. This
+category ranges from semi-empirical surface-spread models to coupled fire--atmosphere models.
+
+\textbf{Surface fire spread foundations.} Rothermel derives a mathematical model for predicting rate of spread and
+intensity in wildland fuels and remains the basis for many operational fire behavior tools \cite{rothermel1972spread}.
+It provides fast, parameter-driven estimates suitable for real-time systems but is limited by assumptions about
+fuels and homogeneity.
+
+\textbf{Operational fire growth simulators.} Finney's FARSITE integrates multiple fire behavior components
+(surface, crown, spotting, fuel moisture) to simulate two-dimensional fire growth over landscapes and has been
+widely used for planning and decision support \cite{finney1998farsite}. FARSITE is valuable in DT settings because
+it can be driven by GIS layers, but runtime can be a bottleneck for rapid re-forecasting without approximations.
+
+\textbf{Physics-based models.} FIRETEC represents combustion, heat transfer, and atmosphere--fire interactions
+using physics-based process models, enabling study of complex phenomena (wind transients, heterogeneous fuels)
+\cite{linn2002firetec}. This higher fidelity comes with significantly higher computational cost, often requiring HPC
+resources.
+
+\textbf{Coupled atmosphere--fire forecasting.} Coen et al.\ present WRF-Fire, integrating a wildfire behavior
+module within the Weather Research and Forecasting (WRF) model to capture two-way coupling between fire and local
+meteorology \cite{coen2013wrffire}. Such coupling improves realism for wind-driven events but increases compute and
+data requirements.
+
+\textbf{Relevance to our project.} For a streaming prototype, we will prioritize fast simulators or simplified
+spread envelopes (Rothermel-style or FARSITE-like) for responsiveness, while designing interfaces so higher-fidelity
+coupled models (e.g., WRF-Fire) can be swapped in later.
+
+\subsection{Observation products: satellite active-fire detection and fire-weather indices}
+A wildfire DT is only as useful as its observation layer. Satellite active-fire products provide broad coverage,
+while fire-weather indices summarize atmospheric drivers of fire potential.
+
+\textbf{MODIS active fire (Collection 6).} Giglio et al.\ describe the MODIS Collection 6 fire detection algorithm and
+product updates, including improved false-alarm control and revised fire radiative power retrieval \cite{giglio2016modis}.
+MODIS offers global coverage with moderate spatial resolution and long historical continuity.
+
+\textbf{VIIRS 375m active fire.} Schroeder et al.\ introduce the 375m VIIRS active fire product, providing finer spatial
+detail and improved perimeter coherence compared with coarser products \cite{schroeder2014viirs}.
+
+\textbf{Fire Weather Index (FWI).} Van Wagner's Canadian FWI System operationalizes weather-driven fire danger into
+components linked to fuel moisture and spread potential \cite{vanwagner1987fwi}. Although regional calibration is
+needed, FWI-like indices are widely used as features in risk models and for contextualizing alerts.
+
+\textbf{Relevance to our project.} We will ingest VIIRS/MODIS active fire detections (as event streams) and compute
+weather-derived risk features (FWI or similar) for spatiotemporal risk maps and for initializing/validating simple
+spread forecasts.
+
+\subsection{Data assimilation and real-time model updating}
+\textbf{Data assimilation} updates model state (or parameters) using incoming measurements. For wildfire DTs,
+assimilation is crucial because ignition location, fuel moisture, and winds are uncertain and evolve quickly.
+
+\textbf{Ensemble Kalman filtering (EnKF) for wildfire.} Mandel et al.\ present a wildfire model with data assimilation
+and demonstrate using ensemble-based methods to assimilate observations into running simulations \cite{mandel2008wildland}.
+
+\textbf{Reduced-cost EnKF strategies.} Rochoux et al.\ propose approaches for computationally feasible wildfire spread
+prediction with ensemble-based assimilation and uncertainty quantification \cite{rochoux2014enkf}.
+
+\textbf{Perimeter assimilation with operational tools.} Yoo and Song develop a rapid method that assimilates wildfire
+perimeters into a spread predictor using EnKF and accelerate updates via polyline simplification \cite{yoo2023rapid}.
+
+\textbf{Relevance to our project.} In a course-scale prototype, we can implement a lightweight updating step
+(e.g., perimeter correction or parameter nudging) compatible with a fast spread model, while logging uncertainty
+proxies (ensemble spread or confidence scores) for downstream alerting.
+
+\subsection{Cyberinfrastructure and decision-support platforms}
+This category shows end-to-end systems integrating data, models, and user-facing products (maps, workflows,
+ensembles) for operational use.
+
+\textbf{Firemap (WIFIRE platform).} Crawl et al.\ present Firemap, a web platform that integrates real-time and
+archived geospatial data with scalable processing to support simulation, visualization, and repeatable workflows,
+including ensemble execution to represent uncertainty \cite{crawl2017firemap}.
+
+\textbf{WIFIRE experience.} Altintas discusses cyberinfrastructure lessons from WIFIRE (data integration, workflow
+automation, and operational deployment) as an example of translational impact \cite{altintas2021wifire}.
+
+\textbf{Relevance to our project.} These systems validate the need for reproducible workflows and tight integration
+between ingestion, analytics, modeling, and visualization. Our design goal is a smaller, open-source, course-feasible
+subset: streaming ingestion + scalable geospatial analytics + simple forecasting + interactive dashboard.
+
+\subsection{Big-data streaming and geospatial processing frameworks}
+This category covers scalable engines and libraries that make real-time spatiotemporal analytics practical.
+
+\textbf{Unified big-data processing.} Apache Spark provides a unified engine for large-scale batch and streaming
+processing with a rich ecosystem \cite{zaharia2016spark}.
+
+\textbf{Streaming ingestion backbone.} Kafka provides a durable distributed log for high-throughput event ingestion
+and stream processing pipelines \cite{kreps2011kafka}.
+
+\textbf{Geospatial analytics at scale.} GeoSpark/Sedona extends Spark with spatial data types, indexing, and joins
+\cite{yu2019geospark}. ST-Hadoop extends MapReduce systems with spatiotemporal indexing and query support
+\cite{alarabi2018sthadoop}.
+
+\textbf{Relevance to our project.} Our pipeline will implement (i) streaming ingestion (Kafka-like topics),
+(ii) processing (Spark Structured Streaming / micro-batches), and (iii) spatial joins (Sedona) to fuse active-fire
+detections with contextual layers (weather grids, land cover, critical infrastructure proximity).
+
+\section{Synthesis: gaps and how the proposed project fits}
+Existing work provides strong components (satellite fire detections, spread models, assimilation methods, and
+end-to-end platforms), but \textbf{small-team deployability} remains difficult due to integration complexity and the
+operational burden of maintaining data pipelines, geospatial indexing, and continuous updating.
+
+Our proposed project focuses on a \textbf{reproducible, lightweight architecture}:
+\begin{itemize}
+  \item \textbf{Streaming ingestion} of active-fire detections + weather snapshots + optional sensor data,
+  \item \textbf{Scalable spatiotemporal joins} to compute risk layers and feature stores,
+  \item \textbf{Simple, fast forecasting} (spread envelope / heuristic growth) with optional nudging,
+  \item \textbf{Interactive dashboard + alerts} for decision support.
+\end{itemize}
+This design targets the practical gap between research prototypes and operational cyberinfrastructure.
+
+\section{Summary table of categories and related work}
+Table~\ref{tab:summary} highlights how each reference supports one or more categories relevant to the proposed
+wildfire digital twin.
+
+\begin{table}[h!]
+\small
+\centering
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{lccccccX}
+\toprule
+\textbf{Ref} & \textbf{DT/DDDAS} & \textbf{Fire} & \textbf{Obs/RS} & \textbf{Assim.} & \textbf{Cyber} & \textbf{Big-Geo} & \textbf{Key idea (very short)} \\
+\midrule
+\cite{grieves2014digitaltwin} & \checkmark & & & & & & Digital twin concept baseline \\
+\cite{darema2004dddas} & \checkmark & & & & & & DDDAS: online data into running sims \\
+\cite{rothermel1972spread} & & \checkmark & & & & & Fast surface-spread rate model \\
+\cite{finney1998farsite} & & \checkmark & & & & & Operational 2D fire growth simulator \\
+\cite{linn2002firetec} & & \checkmark & & & & & Physics-based fire/atmosphere processes \\
+\cite{coen2013wrffire} & & \checkmark & & & & & Coupled weather--fire forecasting \\
+\cite{giglio2016modis} & & & \checkmark & & & & Active fire detection product \\
+\cite{schroeder2014viirs} & & & \checkmark & & & & Finer-resolution fire detections \\
+\cite{vanwagner1987fwi} & & & \checkmark & & & & Weather-based fire danger indices \\
+\cite{mandel2008wildland} & & & & \checkmark & & & EnKF-style assimilation into wildfire model \\
+\cite{rochoux2014enkf} & & & & \checkmark & & & Reduced-cost EnKF for spread prediction \\
+\cite{yoo2023rapid} & & \checkmark & & \checkmark & & & Perimeter assimilation with acceleration \\
+\cite{crawl2017firemap} & & & & & \checkmark & & End-to-end platform + workflows \\
+\cite{altintas2021wifire} & & & & & \checkmark & & Cyberinfrastructure for response \\
+\cite{halem2024wdt} & \checkmark & & & & \checkmark & & Wildfire DT vision and challenges \\
+\cite{huang2024wdtprogress} & \checkmark & & \checkmark & & & & Wildfire DT progress review \\
+\cite{zaharia2016spark} & & & & & & \checkmark & Unified engine for big data + streaming \\
+\cite{kreps2011kafka} & & & & & & \checkmark & Distributed log + stream ingestion \\
+\cite{yu2019geospark} & & & & & & \checkmark & Spatial joins/indexing on Spark \\
+\cite{alarabi2018sthadoop} & & & & & & \checkmark & Spatio-temporal indexing on Hadoop \\
+\bottomrule
+\end{tabularx}
+\caption{Mapping of related work to categories relevant to the proposed wildfire digital twin.}
+\label{tab:summary}
+\end{table}
+
+\section*{Author Contributions}
+\textbf{Prince Savsaviya:} Led problem formulation and system architecture; surveyed big-data streaming and geospatial
+analytics literature (Spark, Kafka, Sedona/ST-Hadoop); integrated categories into a coherent narrative; edited final document.
+
+\textbf{Teammate-1:} Surveyed wildfire spread modeling literature (Rothermel, FARSITE, WRF-Fire, FIRETEC) and summarized
+model assumptions, strengths, and limitations.
+
+\textbf{Ali:} Surveyed remote sensing and observation products (MODIS/VIIRS active fire, fire weather indices) and
+documented how these data sources can be ingested and validated in real time.
+
+\textbf{Teammate-3:} Surveyed data assimilation and real-time updating methods (EnKF variants, perimeter assimilation) and
+wrote the synthesis of gaps/opportunities for a deployable DT prototype.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{refs}
+
+\end{document}

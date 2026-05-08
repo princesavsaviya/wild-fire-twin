@@ -1,0 +1,9 @@
+What technique does the system use to achieve a city-scale load time of under 5 seconds when rendering millions of polygons?
+By using H3 Spatial Indexing to aggregate data into coarse hexagonal cells
+By pre-caching raster images of the entire state of California
+By relying entirely on DuckDB to filter out non-essential buildings
+
+How does the Real-Time Risk Modeling engine computationally generate the predicted fire spread risk zone?
+It dynamically scales and orients a cone-shaped region based on live wind speed and direction
+It draws a naive, static circular buffer around the initial fire ignition coordinate
+It relies entirely on a pre-trained machine learning model to predict exact fire movement
